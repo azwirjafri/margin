@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Margin Calculator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+        th { background-color: #f4f4f4; }
+        #projectTitleDisplay {
+            font-size: 1.5em;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h2>Margin Calculator</h2>
+    <button onclick="saveAsPDF()">Save as PDF</button>
+    <br><br>
+    <label>Project Title: <input type="text" id="projectTitle" oninput="updateTitle()"></label>
+    <h3 id="projectTitleDisplay">Enter Project Title...</h3>
+    <br>
+    <label>Margin Percentage: <input type="number" id="margin" value="0" oninput="updateTable()">%</label>
+    <br><br>
+    <label>Total Cost: <input type="text" id="totalCost" readonly></label>
+    <label>Total Margin Cost: <input type="text" id="totalMarginCost" readonly></label>
+    <br><br>
+    <table id="dataTable">
+        <thead>
+            <tr>
+                <th>No</th>
+                <th>Item</th>
+                <th>Qty</th>
+                <th>Price</th>
+                <th>Total</th>
+                <th>M.Price</th>
+                <th>M.Total</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody id="tableBody">
+        </tbody>
+    </table>
+    <br>
+    <button onclick="addRow()">Add Row</button>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    <script>
+        function formatNumber(num) {
+            return num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        function saveAsPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            doc.text(document.getElementById("projectTitleDisplay").textContent, 10, 10);
+            doc.text("Margin Percentage: " + document.getElementById("margin").value + "%", 10, 20);
+            doc.text("Total Cost: " + document.getElementById("totalCost").value, 10, 30);
+            doc.text("Total: " + document.getElementById("totalMarginCost").value, 10, 40);
+            
+            let tableData = [];
+            document.querySelectorAll("#tableBody tr").forEach((row, index) => {
+                let rowData = [
+                    index + 1,
+                    row.cells[1].querySelector("input").value,
+                    row.cells[2].querySelector("input").value,
+                    row.cells[3].querySelector("input").value,
+                    row.cells[4].textContent,
+                    row.cells[5].textContent,
+                    row.cells[6].textContent
+                ];
+                tableData.push(rowData);
+            });
+            
+            doc.autoTable({
+                head: [["No", "Item", "Qty", "Price", "Total", "M.Price", "M.Total"]],
+                body: tableData,
+                startY: 50
+            });
+            
+            doc.save("Margin_Calculator.pdf");
+        }
+
+        function updateTitle() {
+            const title = document.getElementById("projectTitle").value.toUpperCase();
+            document.getElementById("projectTitleDisplay").textContent = title || "Enter Project Title...";
+        }
+
+        function addRow() {
+            const tableBody = document.getElementById("tableBody");
+            const rowCount = tableBody.rows.length + 1;
+            const row = tableBody.insertRow();
+            row.innerHTML = `
+                <td>${rowCount}</td>
+                <td><input type="text"></td>
+                <td><input type="number" value="1" oninput="updateTable()"></td>
+                <td><input type="number" value="0" oninput="updateTable()"></td>
+                <td class="total">0</td>
+                <td class="mPrice">0</td>
+                <td class="mTotal">0</td>
+                <td><button onclick="removeRow(this)">Remove</button></td>
+            `;
+        }
+
+        function removeRow(button) {
+            button.closest("tr").remove();
+            updateTable();
+        }
+
+        function updateTable() {
+            const margin = parseFloat(document.getElementById("margin").value) / 100;
+            let totalCost = 0;
+            let totalMarginCost = 0;
+            
+            document.querySelectorAll("#tableBody tr").forEach(row => {
+                const qty = parseFloat(row.cells[2].querySelector("input").value) || 0;
+                const price = parseFloat(row.cells[3].querySelector("input").value) || 0;
+                const total = qty * price;
+                const mPrice = price + (price * margin);
+                const mTotal = qty * mPrice;
+                row.cells[4].textContent = formatNumber(total);
+                row.cells[5].textContent = formatNumber(mPrice);
+                row.cells[6].textContent = formatNumber(mTotal);
+                totalCost += total;
+                totalMarginCost += mTotal;
+            });
+            
+            document.getElementById("totalCost").value = formatNumber(totalCost);
+            document.getElementById("totalMarginCost").value = formatNumber(totalMarginCost);
+        }
+    </script>
+</body>
+</html>
